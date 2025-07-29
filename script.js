@@ -11,7 +11,7 @@ async function findShift() {
   }
 
   try {
-    // Step 1: Get coordinates
+    // Step 1: Get coordinates from API Ninjas
     const geoRes = await fetch(`https://api.api-ninjas.com/v1/geocoding?city=${city}`, {
       headers: { "X-Api-Key": NINJA_KEY }
     });
@@ -24,7 +24,7 @@ async function findShift() {
 
     const { latitude, longitude } = geoData[0];
 
-    // Step 2: Get city's current time zone offset
+    // Step 2: Get timezone offset using TimeZoneDB (ensure HTTPS)
     const tzRes = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=${TZDB_KEY}&format=json&by=position&lat=${latitude}&lng=${longitude}`);
     const tzData = await tzRes.json();
 
@@ -33,26 +33,25 @@ async function findShift() {
       return;
     }
 
-    const cityOffsetSec = tzData.gmtOffset; // e.g., 19800 for IST
+    const cityOffsetSec = tzData.gmtOffset; // City offset in seconds
     const istOffsetSec = 19800; // IST = UTC+5:30 = 19800 seconds
 
-    // Step 3: Shift time ranges in IST
+    // Step 3: Define shifts in IST hours
     const shifts = [
       { name: "IST Shift", istStart: 10, istEnd: 19 },
       { name: "UK Shift",  istStart: 12, istEnd: 21 },
       { name: "US Shift",  istStart: 22, istEnd: 7 }
     ];
 
-    // Step 4: Convert IST shift hours to local time in the target city
+    // Step 4: Convert IST shift hours to local time in city
     const shiftScores = shifts.map(shift => {
       const cityStart = (shift.istStart * 3600 + cityOffsetSec - istOffsetSec) / 3600;
       const cityEnd = (shift.istEnd * 3600 + cityOffsetSec - istOffsetSec) / 3600;
 
-      // Normalize to 0–24
       const normStart = (cityStart + 24) % 24;
       const normEnd = (cityEnd + 24) % 24;
 
-      // Score = overlap with 9 AM – 6 PM (9–18)
+      // Score overlap with typical local working hours (9am–6pm)
       let score = 0;
       for (let hour = 9; hour <= 18; hour++) {
         if (normStart < normEnd) {
@@ -65,17 +64,18 @@ async function findShift() {
       return { ...shift, localStart: normStart, localEnd: normEnd, score };
     });
 
-    // Step 5: Choose best-scoring shift
+    // Step 5: Find the shift with highest overlap score
     const bestShift = shiftScores.sort((a, b) => b.score - a.score)[0];
 
+    // Step 6: Display result
     resultDiv.innerHTML = `
       <strong>City:</strong> ${city}<br/>
       <strong>Offset from IST:</strong> ${(cityOffsetSec - istOffsetSec) / 3600} hrs<br/>
       <strong>Best Shift:</strong> ${bestShift.name}<br/>
-      <small>Local time window: ${formatHour(bestShift.localStart)} – ${formatHour(bestShift.localEnd)}</small>
+      <small>Local working window: ${formatHour(bestShift.localStart)} – ${formatHour(bestShift.localEnd)}</small>
     `;
   } catch (err) {
-    console.error(err);
+    console.error("API Error:", err);
     resultDiv.textContent = "Something went wrong. Please check your API keys or connection.";
   }
 }
