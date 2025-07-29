@@ -25,7 +25,7 @@ async function findShift() {
     const { latitude, longitude } = geoData[0];
 
     // Step 2: Get city's current time zone offset
-    const tzRes = await fetch(`http://api.timezonedb.com/v2.1/get-time-zone?key=${TZDB_KEY}&format=json&by=position&lat=${latitude}&lng=${longitude}`);
+    const tzRes = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=${TZDB_KEY}&format=json&by=position&lat=${latitude}&lng=${longitude}`);
     const tzData = await tzRes.json();
 
     if (tzData.status !== "OK") {
