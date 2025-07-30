@@ -90,7 +90,15 @@
     <div id="result"></div>
   </div>
 
+  <script>
+    document.getElementById("cityInput").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        findShift();
+      }
+    });
+  </script>
+
   <script src="script.js"></script>
 </body>
 </html>
-
