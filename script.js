@@ -4,31 +4,34 @@ const NINJA_KEY = "gTleHSZgUyxnyh4BvnoVHA==VRQyItsRQ3j8byPK";
 async function findShift() {
   const city = document.getElementById("cityInput").value.trim();
   const resultDiv = document.getElementById("result");
+  const loadingDiv = document.getElementById("loading");
 
   if (!city) {
     resultDiv.textContent = "Please enter a city name.";
     return;
   }
 
+  loadingDiv.style.display = "block";
+  resultDiv.textContent = "";
+
   try {
-    // Step 1: Get coordinates from API Ninjas
     const geoRes = await fetch(`https://api.api-ninjas.com/v1/geocoding?city=${city}`, {
       headers: { "X-Api-Key": NINJA_KEY }
     });
     const geoData = await geoRes.json();
+
+    loadingDiv.style.display = "none";
 
     if (!geoData.length) {
       resultDiv.textContent = "City not found.";
       return;
     }
 
-    // Step 2: If multiple cities found, let the user select
     if (geoData.length > 1) {
       resultDiv.innerHTML = `<strong>Multiple cities found. Please select one:</strong><br/>`;
-      geoData.forEach((c, index) => {
+      geoData.forEach(c => {
         const btn = document.createElement("button");
         btn.textContent = `${c.name}, ${c.country}`;
-        btn.style.margin = "5px";
         btn.onclick = () => calculateShift(c);
         resultDiv.appendChild(btn);
       });
@@ -36,19 +39,24 @@ async function findShift() {
       calculateShift(geoData[0]);
     }
   } catch (err) {
-    console.error("API Error:", err);
+    loadingDiv.style.display = "none";
+    console.error(err);
     resultDiv.textContent = "Something went wrong. Please check your API keys or connection.";
   }
 }
 
 async function calculateShift(cityInfo) {
   const resultDiv = document.getElementById("result");
+  const loadingDiv = document.getElementById("loading");
+  loadingDiv.style.display = "block";
+
   const { name, country, latitude, longitude } = cityInfo;
 
   try {
-    // Step 2: Get timezone offset using TimeZoneDB
     const tzRes = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=${TZDB_KEY}&format=json&by=position&lat=${latitude}&lng=${longitude}`);
     const tzData = await tzRes.json();
+
+    loadingDiv.style.display = "none";
 
     if (tzData.status !== "OK") {
       resultDiv.textContent = "Time zone data unavailable.";
@@ -56,7 +64,7 @@ async function calculateShift(cityInfo) {
     }
 
     const cityOffsetSec = tzData.gmtOffset;
-    const istOffsetSec = 19800; // IST = UTC+5:30
+    const istOffsetSec = 19800; // IST UTC+5:30
 
     const shifts = [
       { name: "IST Shift", istStart: 10, istEnd: 19 },
@@ -92,7 +100,8 @@ async function calculateShift(cityInfo) {
       <small>Local working window: ${formatHour(bestShift.localStart)} – ${formatHour(bestShift.localEnd)}</small>
     `;
   } catch (err) {
-    console.error("API Error:", err);
+    loadingDiv.style.display = "none";
+    console.error(err);
     resultDiv.textContent = "Something went wrong while fetching timezone data.";
   }
 }
@@ -103,3 +112,8 @@ function formatHour(hour) {
   const displayHour = h % 12 === 0 ? 12 : h % 12;
   return `${displayHour} ${ampm}`;
 }
+
+// Trigger findShift on Enter key
+document.getElementById("cityInput").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") findShift();
+});
