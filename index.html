@@ -26,8 +26,10 @@
       border-radius: 16px;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
       width: 100%;
-      max-width: 420px;
+      max-width: 500px;
       position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     h1 {
@@ -100,90 +102,7 @@
     <div id="result"></div>
   </div>
 
-  <script>
-    document.getElementById("cityInput").addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        findShift();
-      }
-    });
-
-    async function findShift() {
-      const city = document.getElementById("cityInput").value.trim();
-      const resultDiv = document.getElementById("result");
-      const loadingDiv = document.getElementById("loading");
-
-      if (!city) {
-        resultDiv.textContent = "Please enter a city name.";
-        return;
-      }
-
-      loadingDiv.style.display = "block";
-      resultDiv.textContent = "";
-
-      try {
-        const geoRes = await fetch(`https://api.api-ninjas.com/v1/geocoding?city=${city}`, {
-          headers: { "X-Api-Key": "gTleHSZgUyxnyh4BvnoVHA==VRQyItsRQ3j8byPK" }
-        });
-        const geoData = await geoRes.json();
-
-        if (!geoData[0]) {
-          resultDiv.textContent = "City not found.";
-          return;
-        }
-
-        const { latitude, longitude } = geoData[0];
-
-        const tzRes = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=FCBRP4K0G6LK&format=json&by=position&lat=${latitude}&lng=${longitude}`);
-        const tzData = await tzRes.json();
-
-        if (tzData.status !== "OK") {
-          resultDiv.textContent = "Time zone data unavailable.";
-          return;
-        }
-
-        const cityOffsetSec = tzData.gmtOffset;
-        const istOffsetSec = 19800;
-
-        const shifts = [
-          { name: "IST Shift", istStart: 10, istEnd: 19 },
-          { name: "UK Shift",  istStart: 12, istEnd: 21 },
-          { name: "US Shift",  istStart: 22, istEnd: 7 }
-        ];
-
-        const shiftScores = shifts.map(shift => {
-          const cityStart = (shift.istStart * 3600 + cityOffsetSec - istOffsetSec) / 3600;
-          const cityEnd = (shift.istEnd * 3600 + cityOffsetSec - istOffsetSec) / 3600;
-
-          const normStart = (cityStart + 24) % 24;
-          const normEnd = (cityEnd + 24) % 24;
-
-          let score = 0;
-          for (let hour = 9; hour <= 18; hour++) {
-            if (normStart < normEnd) {
-              if (hour >= normStart && hour <= normEnd) score++;
-            } else {
-              if (hour >= normStart || hour <= normEnd) score++;
-            }
-          }
-
-          return { ...shift, localStart: normStart, localEnd: normEnd, score };
-        });
-
-        const bestShift = shiftScores.sort((a, b) => b.score - a.score)[0];
-
-        resultDiv.innerHTML = `
-          <strong>City:</strong> ${city}<br/>
-          <strong>Offset from IST:</strong> ${(cityOffsetSec - istOffsetSec) / 3600} hrs<br/>
-          <strong>Best Shift:</strong> ${bestShift.name}
-        `;
-      } catch (err) {
-        console.error(err);
-        resultDiv.textContent = "Something went wrong. Please check your API keys or connection.";
-      } finally {
-        loadingDiv.style.display = "none";
-      }
-    }
-  </script>
+  <!-- Link external JS -->
+  <script src="script.js"></script>
 </body>
 </html>
